@@ -20,6 +20,7 @@ export default function RoomsPage() {
   const [selectedRooms, setSelectedRooms] = useState([]);
   const [selectedRoom, setSelectedRoom] = useState(null); // 모달용
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false); // 방 생성 모달
 
   // 새로 추가된 상태
   const [expandedRooms, setExpandedRooms] = useState({}); // Collapse 상태
@@ -129,6 +130,7 @@ export default function RoomsPage() {
       body: JSON.stringify(form),
     });
     setForm({ start: '', end: '', startDate: '', endDate: '', group: '전부', capacity: 4, remarks: '' });
+    setShowCreateModal(false);
     fetchRooms();
   };
 
@@ -281,139 +283,23 @@ export default function RoomsPage() {
     <main className="p-6">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">방 관리</h1>
-        <button
-          onClick={handleRefresh}
-          disabled={isRefreshing}
-          className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 transition"
-        >
-          <span className={isRefreshing ? 'animate-spin' : ''}>🔄</span>
-          {isRefreshing ? '새로고침 중...' : '새로고침'}
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+          >
+            + 방 생성
+          </button>
+          <button
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 transition"
+          >
+            <span className={isRefreshing ? 'animate-spin' : ''}>↻</span>
+            {isRefreshing ? '새로고침 중...' : '새로고침'}
+          </button>
+        </div>
       </div>
-
-      {/* 방 생성 */}
-      <form onSubmit={createRooms} className="bg-white shadow rounded-lg p-6 mb-6 max-w-2xl">
-        <h2 className="text-xl font-semibold mb-4">방 생성</h2>
-
-        <div className="grid grid-cols-2 gap-4 mb-4">
-          <div>
-            <label className="block text-sm font-medium mb-2">시작 방번호</label>
-            <input
-              type="number"
-              value={form.start}
-              onChange={(e) => setForm(f => ({ ...f, start: e.target.value }))}
-              required
-              className="w-full border border-gray-300 rounded-md p-2"
-              placeholder="예: 101"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-2">끝 방번호</label>
-            <input
-              type="number"
-              value={form.end}
-              onChange={(e) => setForm(f => ({ ...f, end: e.target.value }))}
-              required
-              className="w-full border border-gray-300 rounded-md p-2"
-              placeholder="예: 110"
-            />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4 mb-4">
-          <div>
-            <label className="block text-sm font-medium mb-2">시작 날짜</label>
-            <input
-              type="date"
-              value={form.startDate}
-              onChange={(e) => setForm(f => ({ ...f, startDate: e.target.value }))}
-              required
-              className="w-full border border-gray-300 rounded-md p-2"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-2">끝 날짜</label>
-            <input
-              type="date"
-              value={form.endDate}
-              onChange={(e) => setForm(f => ({ ...f, endDate: e.target.value }))}
-              required
-              className="w-full border border-gray-300 rounded-md p-2"
-            />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4 mb-4">
-          <div>
-            <label className="block text-sm font-medium mb-2">배정 그룹</label>
-            <select
-              value={form.group}
-              onChange={(e) => setForm(f => ({ ...f, group: e.target.value }))}
-              className="w-full border border-gray-300 rounded-md p-2"
-            >
-              <option>탈북민</option>
-              <option>목회자</option>
-              <option>평신도</option>
-              <option>전부</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-2">가용 인원</label>
-            <input
-              type="number"
-              value={form.capacity}
-              onChange={(e) => setForm(f => ({ ...f, capacity: e.target.value }))}
-              required
-              className="w-full border border-gray-300 rounded-md p-2"
-            />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4 mb-4">
-          <div>
-            <label className="block text-sm font-medium mb-2">비고 (방 구분)</label>
-            <select
-              value={form.remarks}
-              onChange={(e) => setForm(f => ({ ...f, remarks: e.target.value }))}
-              className="w-full border border-gray-300 rounded-md p-2"
-            >
-              <option value="">선택 안함</option>
-              <option value="여자방">여자방</option>
-              <option value="남자방">남자방</option>
-              <option value="가족실">가족실</option>
-              <option value="혼합">혼합</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-2">직접 입력 (선택)</label>
-            <input
-              type="text"
-              value={form.remarks}
-              onChange={(e) => setForm(f => ({ ...f, remarks: e.target.value }))}
-              placeholder="예: 목회자 가족실"
-              className="w-full border border-gray-300 rounded-md p-2"
-            />
-          </div>
-        </div>
-
-        <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mb-4 text-sm text-blue-800">
-          <strong>생성될 방:</strong> {
-            form.start && form.end && form.startDate && form.endDate
-              ? (() => {
-                  const roomCount = parseInt(form.end) - parseInt(form.start) + 1;
-                  const startD = new Date(form.startDate);
-                  const endD = new Date(form.endDate);
-                  const dayCount = Math.floor((endD - startD) / (1000 * 60 * 60 * 24)) + 1;
-                  return `${roomCount}개 방 × ${dayCount}일 = 총 ${roomCount * dayCount}개`;
-                })()
-              : '정보를 입력하세요'
-          }
-        </div>
-
-        <button className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700">
-          방 생성
-        </button>
-      </form>
 
       {/* 검색 및 필터 */}
       <div className="bg-white shadow rounded-lg p-4 mb-6">
@@ -749,6 +635,162 @@ export default function RoomsPage() {
                 </div>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* 방 생성 모달 */}
+      {showCreateModal && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          onClick={() => setShowCreateModal(false)}
+        >
+          <div
+            className="bg-white rounded-lg shadow-xl max-w-xl w-full max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
+              <h2 className="text-xl font-bold">방 생성</h2>
+              <button
+                onClick={() => setShowCreateModal(false)}
+                className="text-gray-500 hover:text-gray-700 text-2xl"
+              >
+                ×
+              </button>
+            </div>
+
+            <form onSubmit={createRooms} className="p-6">
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2">시작 방번호</label>
+                  <input
+                    type="number"
+                    value={form.start}
+                    onChange={(e) => setForm(f => ({ ...f, start: e.target.value }))}
+                    required
+                    className="w-full border border-gray-300 rounded-md p-2"
+                    placeholder="예: 101"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">끝 방번호</label>
+                  <input
+                    type="number"
+                    value={form.end}
+                    onChange={(e) => setForm(f => ({ ...f, end: e.target.value }))}
+                    required
+                    className="w-full border border-gray-300 rounded-md p-2"
+                    placeholder="예: 110"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2">시작 날짜</label>
+                  <input
+                    type="date"
+                    value={form.startDate}
+                    onChange={(e) => setForm(f => ({ ...f, startDate: e.target.value }))}
+                    required
+                    className="w-full border border-gray-300 rounded-md p-2"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">끝 날짜</label>
+                  <input
+                    type="date"
+                    value={form.endDate}
+                    onChange={(e) => setForm(f => ({ ...f, endDate: e.target.value }))}
+                    required
+                    className="w-full border border-gray-300 rounded-md p-2"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2">배정 그룹</label>
+                  <select
+                    value={form.group}
+                    onChange={(e) => setForm(f => ({ ...f, group: e.target.value }))}
+                    className="w-full border border-gray-300 rounded-md p-2"
+                  >
+                    <option>탈북민</option>
+                    <option>목회자</option>
+                    <option>평신도</option>
+                    <option>전부</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">가용 인원</label>
+                  <input
+                    type="number"
+                    value={form.capacity}
+                    onChange={(e) => setForm(f => ({ ...f, capacity: e.target.value }))}
+                    required
+                    className="w-full border border-gray-300 rounded-md p-2"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2">비고 (방 구분)</label>
+                  <select
+                    value={form.remarks}
+                    onChange={(e) => setForm(f => ({ ...f, remarks: e.target.value }))}
+                    className="w-full border border-gray-300 rounded-md p-2"
+                  >
+                    <option value="">선택 안함</option>
+                    <option value="여자방">여자방</option>
+                    <option value="남자방">남자방</option>
+                    <option value="가족실">가족실</option>
+                    <option value="혼합">혼합</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">직접 입력 (선택)</label>
+                  <input
+                    type="text"
+                    value={form.remarks}
+                    onChange={(e) => setForm(f => ({ ...f, remarks: e.target.value }))}
+                    placeholder="예: 목회자 가족실"
+                    className="w-full border border-gray-300 rounded-md p-2"
+                  />
+                </div>
+              </div>
+
+              <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mb-4 text-sm text-blue-800">
+                <strong>생성될 방:</strong> {
+                  form.start && form.end && form.startDate && form.endDate
+                    ? (() => {
+                        const roomCount = parseInt(form.end) - parseInt(form.start) + 1;
+                        const startD = new Date(form.startDate);
+                        const endD = new Date(form.endDate);
+                        const dayCount = Math.floor((endD - startD) / (1000 * 60 * 60 * 24)) + 1;
+                        return `${roomCount}개 방 × ${dayCount}일 = 총 ${roomCount * dayCount}개`;
+                      })()
+                    : '정보를 입력하세요'
+                }
+              </div>
+
+              <div className="flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowCreateModal(false)}
+                  className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
+                >
+                  취소
+                </button>
+                <button
+                  type="submit"
+                  className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700"
+                >
+                  방 생성
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
