@@ -1,7 +1,13 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(/usr/local/bin/npm run build)",
+      "Bash(export PATH=\"$HOME/.nvm/versions/node/v20.19.0/bin:$PATH\")",
+      "Bash(npm run build:*)",
+      "Bash(export PATH=\"$HOME/.nvm/versions/node/v20.19.0/bin:/bin:/usr/bin:$PATH\")",
+      "Bash(/opt/homebrew/bin/npm run build)",
+      "Bash(export PATH=\"/opt/homebrew/bin:$PATH\")"
     ],
     "deny": [],
     "ask": []
