@@ -79,12 +79,25 @@ export async function GET(req) {
       return dateB - dateA; // 최신순
     });
 
-    // 이름 검색 필터링 (name, representativeName 필드만 검색)
+    // 이름 검색 필터링 (동적 필드 포함 - 짧은 문자열 필드에서 검색)
     if (searchName) {
       console.log('  ✅ Applying name search filter:', searchName);
       const searchLower = searchName.toLowerCase();
       participants = participants.filter(p => {
-        const searchableFields = [p.name, p.representativeName].filter(Boolean);
+        // 이름은 동적 필드(field_xxx)에 저장되므로, 짧은 문자열 필드를 모두 검색
+        const searchableFields = Object.entries(p)
+          .filter(([key, val]) =>
+            typeof val === 'string' &&
+            val.length > 0 &&
+            val.length <= 20 &&
+            !key.includes('date') &&
+            !key.includes('Date') &&
+            !key.includes('createdAt') &&
+            !key.includes('roomId') &&
+            !key.includes('roomName')
+          )
+          .map(([_, val]) => val);
+
         return searchableFields.some(field =>
           field.toLowerCase().includes(searchLower)
         );

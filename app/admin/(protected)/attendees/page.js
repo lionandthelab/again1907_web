@@ -294,21 +294,38 @@ export default function AttendeesPage() {
       }
     }
 
-    const res = await fetch('/api/admin/assign', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        collectionName,
-        participantId,
-        roomNumber,
-      }),
-    });
+    // Optimistic Update: 먼저 UI 업데이트
+    const previousParticipants = [...participants];
+    setParticipants(prev =>
+      prev.map(p => p.id === participantId ? { ...p, roomNumber, _pending: true } : p)
+    );
 
-    const data = await res.json();
-    if (data.ok && data.participant) {
-      setParticipants(prev =>
-        prev.map(p => p.id === participantId ? { ...p, ...data.participant } : p)
-      );
+    try {
+      const res = await fetch('/api/admin/assign', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          collectionName,
+          participantId,
+          roomNumber,
+        }),
+      });
+
+      const data = await res.json();
+      if (data.ok && data.participant) {
+        // 성공: 서버 응답으로 최종 업데이트
+        setParticipants(prev =>
+          prev.map(p => p.id === participantId ? { ...p, ...data.participant, _pending: false } : p)
+        );
+      } else {
+        // 실패: 롤백
+        setParticipants(previousParticipants);
+        alert('방 배정에 실패했습니다.');
+      }
+    } catch (error) {
+      // 에러: 롤백
+      setParticipants(previousParticipants);
+      alert('방 배정 중 오류가 발생했습니다.');
     }
   };
 
@@ -1210,6 +1227,7 @@ export default function AttendeesPage() {
                                 });
 
                                 const isOverCapacity = maxOccupancy >= capacity;
+                                const remarks = sampleRoom?.remarks || '';
 
                                 return (
                                   <option
@@ -1220,7 +1238,7 @@ export default function AttendeesPage() {
                                       fontWeight: isOverCapacity ? 'bold' : 'normal'
                                     }}
                                   >
-                                    {roomNum}호 ({maxOccupancy}/{capacity}명) {isOverCapacity ? '⚠️ 만실' : ''}
+                                    {roomNum}호 ({maxOccupancy}/{capacity}명){remarks && ` [${remarks}]`}{isOverCapacity ? ' 만실' : ''}
                                   </option>
                                 );
                               })}

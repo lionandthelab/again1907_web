@@ -14,11 +14,18 @@ export default function RoomsPage() {
     startDate: '',
     endDate: '',
     group: '전부',
-    capacity: 4
+    capacity: 4,
+    remarks: ''
   });
   const [selectedRooms, setSelectedRooms] = useState([]);
   const [selectedRoom, setSelectedRoom] = useState(null); // 모달용
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // 새로 추가된 상태
+  const [expandedRooms, setExpandedRooms] = useState({}); // Collapse 상태
+  const [currentPage, setCurrentPage] = useState(1); // 페이지네이션
+  const [roomSearch, setRoomSearch] = useState(''); // 방 검색
+  const PAGE_SIZE = 30;
 
   const fetchSettings = async () => {
     const res = await fetch('/api/admin/settings');
@@ -121,7 +128,7 @@ export default function RoomsPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(form),
     });
-    setForm({ start: '', end: '', startDate: '', endDate: '', group: '전부', capacity: 4 });
+    setForm({ start: '', end: '', startDate: '', endDate: '', group: '전부', capacity: 4, remarks: '' });
     fetchRooms();
   };
 
@@ -215,6 +222,39 @@ export default function RoomsPage() {
 
   // 방 번호 순으로 정렬
   const sortedRoomNumbers = Object.keys(groupedRooms).sort((a, b) => parseInt(a) - parseInt(b));
+
+  // 검색 필터링
+  const filteredRoomNumbers = roomSearch
+    ? sortedRoomNumbers.filter(num => num.includes(roomSearch))
+    : sortedRoomNumbers;
+
+  // 페이지네이션 적용
+  const totalPages = Math.ceil(filteredRoomNumbers.length / PAGE_SIZE);
+  const paginatedRoomNumbers = filteredRoomNumbers.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE
+  );
+
+  // Collapse 토글 함수
+  const toggleRoomExpand = (roomNum) => {
+    setExpandedRooms(prev => ({
+      ...prev,
+      [roomNum]: !prev[roomNum]
+    }));
+  };
+
+  // 모든 방 펼치기/접기
+  const expandAll = () => {
+    const allExpanded = {};
+    paginatedRoomNumbers.forEach(num => {
+      allExpanded[num] = true;
+    });
+    setExpandedRooms(allExpanded);
+  };
+
+  const collapseAll = () => {
+    setExpandedRooms({});
+  };
 
   // 숙박 가능 날짜 목록 (마지막 날 제외)
   const accommodationDates = settings?.dates?.slice(0, -1) || [];
@@ -329,6 +369,33 @@ export default function RoomsPage() {
           </div>
         </div>
 
+        <div className="grid grid-cols-2 gap-4 mb-4">
+          <div>
+            <label className="block text-sm font-medium mb-2">비고 (방 구분)</label>
+            <select
+              value={form.remarks}
+              onChange={(e) => setForm(f => ({ ...f, remarks: e.target.value }))}
+              className="w-full border border-gray-300 rounded-md p-2"
+            >
+              <option value="">선택 안함</option>
+              <option value="여자방">여자방</option>
+              <option value="남자방">남자방</option>
+              <option value="가족실">가족실</option>
+              <option value="혼합">혼합</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-2">직접 입력 (선택)</label>
+            <input
+              type="text"
+              value={form.remarks}
+              onChange={(e) => setForm(f => ({ ...f, remarks: e.target.value }))}
+              placeholder="예: 목회자 가족실"
+              className="w-full border border-gray-300 rounded-md p-2"
+            />
+          </div>
+        </div>
+
         <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mb-4 text-sm text-blue-800">
           <strong>생성될 방:</strong> {
             form.start && form.end && form.startDate && form.endDate
@@ -348,6 +415,39 @@ export default function RoomsPage() {
         </button>
       </form>
 
+      {/* 검색 및 필터 */}
+      <div className="bg-white shadow rounded-lg p-4 mb-6">
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex-1 min-w-[200px]">
+            <label className="block text-sm font-medium mb-1">방 번호 검색</label>
+            <input
+              type="text"
+              value={roomSearch}
+              onChange={(e) => {
+                setRoomSearch(e.target.value);
+                setCurrentPage(1);
+              }}
+              placeholder="방 번호 입력..."
+              className="w-full border border-gray-300 rounded-md p-2 text-sm"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={expandAll}
+              className="px-3 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 text-sm"
+            >
+              모두 펼치기
+            </button>
+            <button
+              onClick={collapseAll}
+              className="px-3 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 text-sm"
+            >
+              모두 접기
+            </button>
+          </div>
+        </div>
+      </div>
+
       {/* 전체 선택 + 삭제 버튼 */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-4">
@@ -361,7 +461,8 @@ export default function RoomsPage() {
             <span className="text-sm text-gray-700">전체 선택</span>
           </label>
           <span className="text-sm text-gray-600">
-            전체 {rooms.length}개 방
+            {roomSearch ? `검색 결과: ${filteredRoomNumbers.length}개 방` : `전체 ${sortedRoomNumbers.length}개 방`}
+            {totalPages > 1 && ` (페이지 ${currentPage}/${totalPages})`}
           </span>
         </div>
 
@@ -375,122 +476,184 @@ export default function RoomsPage() {
         )}
       </div>
 
-      {/* 방 목록 (방 번호 기준 그룹화) */}
+      {/* 방 목록 (방 번호 기준 그룹화 - Collapse 카드) */}
       {rooms.length === 0 ? (
         <div className="bg-white shadow rounded-lg p-12 text-center text-gray-500">
           <p className="text-lg">생성된 방이 없습니다.</p>
           <p className="text-sm mt-2">위 폼에서 방을 생성해주세요.</p>
         </div>
+      ) : filteredRoomNumbers.length === 0 ? (
+        <div className="bg-white shadow rounded-lg p-12 text-center text-gray-500">
+          <p className="text-lg">검색 결과가 없습니다.</p>
+          <p className="text-sm mt-2">다른 방 번호로 검색해보세요.</p>
+        </div>
       ) : (
-        <div className="space-y-4">
-          {sortedRoomNumbers.map(roomNumber => {
-            const roomsByDate = groupedRooms[roomNumber];
-            // 날짜 순으로 정렬
-            roomsByDate.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+        <>
+          <div className="space-y-3">
+            {paginatedRoomNumbers.map(roomNumber => {
+              const roomsByDate = groupedRooms[roomNumber];
+              // 날짜 순으로 정렬
+              roomsByDate.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
 
-            const firstRoom = roomsByDate[0];
-            const allRoomIds = roomsByDate.map(r => r.id);
-            const allSelected = allRoomIds.every(id => selectedRooms.includes(id));
+              const firstRoom = roomsByDate[0];
+              const allRoomIds = roomsByDate.map(r => r.id);
+              const allSelected = allRoomIds.every(id => selectedRooms.includes(id));
+              const isExpanded = expandedRooms[roomNumber];
 
-            return (
-              <div key={roomNumber} className="bg-white shadow rounded-lg overflow-hidden">
-                {/* 방 번호 헤더 */}
-                <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4 flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <input
-                      type="checkbox"
-                      checked={allSelected}
-                      onChange={() => {
-                        if (allSelected) {
-                          setSelectedRooms(prev => prev.filter(id => !allRoomIds.includes(id)));
-                        } else {
-                          setSelectedRooms(prev => [...new Set([...prev, ...allRoomIds])]);
-                        }
-                      }}
-                      className="h-5 w-5"
-                    />
-                    <h3 className="text-xl font-bold text-white">
-                      {roomNumber}호
-                    </h3>
-                    <span className="text-blue-100 text-sm">
-                      {firstRoom.group} | 정원 {firstRoom.capacity}명
-                    </span>
+              // 총 배정 인원 계산
+              const totalAssigned = roomsByDate.reduce((sum, room) => {
+                const participants = getParticipantsForRoom(room.id, room.date);
+                return sum + participants.reduce((s, p) => s + (p.totalPeople || 0), 0);
+              }, 0);
+
+              return (
+                <div key={roomNumber} className="bg-white shadow rounded-lg overflow-hidden">
+                  {/* 방 번호 헤더 (클릭 시 Collapse) */}
+                  <div
+                    className="bg-gradient-to-r from-blue-600 to-blue-700 px-4 py-3 flex items-center justify-between cursor-pointer hover:from-blue-700 hover:to-blue-800 transition"
+                    onClick={() => toggleRoomExpand(roomNumber)}
+                  >
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        checked={allSelected}
+                        onChange={(e) => {
+                          e.stopPropagation();
+                          if (allSelected) {
+                            setSelectedRooms(prev => prev.filter(id => !allRoomIds.includes(id)));
+                          } else {
+                            setSelectedRooms(prev => [...new Set([...prev, ...allRoomIds])]);
+                          }
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                        className="h-4 w-4"
+                      />
+                      <h3 className="text-lg font-bold text-white">
+                        {roomNumber}호
+                      </h3>
+                      <span className="text-blue-100 text-sm">
+                        {firstRoom.capacity}인실
+                        {firstRoom.remarks && ` [${firstRoom.remarks}]`}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-blue-100 text-sm">
+                        {roomsByDate.length}일 | 총 {totalAssigned}명 배정
+                      </span>
+                      <span className="text-white text-lg">
+                        {isExpanded ? '▲' : '▼'}
+                      </span>
+                    </div>
                   </div>
-                  <span className="text-blue-100 text-sm">
-                    {roomsByDate.length}일 등록됨
-                  </span>
-                </div>
 
-                {/* 날짜별 상태 */}
-                <div className="p-4">
-                  <div className="space-y-2">
-                    {roomsByDate.map(room => {
-                      const participants = getParticipantsForRoom(room.id, room.date);
-                      const totalPeople = participants.reduce((sum, p) => sum + (p.totalPeople || 0), 0);
-                      const isOverCapacity = totalPeople > room.capacity;
-                      const isSelected = selectedRooms.includes(room.id);
+                  {/* 날짜별 상태 (Collapse 내용) */}
+                  {isExpanded && (
+                    <div className="p-3 bg-gray-50">
+                      <div className="space-y-2">
+                        {roomsByDate.map(room => {
+                          const participants = getParticipantsForRoom(room.id, room.date);
+                          const totalPeople = participants.reduce((sum, p) => sum + (p.totalPeople || 0), 0);
+                          const isOverCapacity = totalPeople > room.capacity;
+                          const isSelected = selectedRooms.includes(room.id);
 
-                      return (
-                        <div
-                          key={room.id}
-                          className={`border rounded-lg p-3 transition ${
-                            isSelected ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'
-                          }`}
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                              <input
-                                type="checkbox"
-                                checked={isSelected}
-                                onChange={() => toggleSelect(room.id)}
-                                className="h-4 w-4"
-                              />
-                              <div>
-                                <div className="font-medium text-gray-900">
-                                  📅 {room.date}
+                          return (
+                            <div
+                              key={room.id}
+                              className={`border rounded-lg p-3 transition bg-white ${
+                                isSelected ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                  <input
+                                    type="checkbox"
+                                    checked={isSelected}
+                                    onChange={() => toggleSelect(room.id)}
+                                    className="h-4 w-4"
+                                  />
+                                  <div>
+                                    <div className="font-medium text-gray-900 text-sm">
+                                      {room.date}
+                                    </div>
+                                    <div className="text-xs text-gray-500 mt-0.5">
+                                      {totalPeople}/{room.capacity}명
+                                      {isOverCapacity && (
+                                        <span className="ml-1 text-red-600 font-semibold">초과</span>
+                                      )}
+                                    </div>
+                                  </div>
                                 </div>
-                                <div className="text-xs text-gray-500 mt-0.5">
-                                  배정: {totalPeople}명 / {room.capacity}명
-                                  {isOverCapacity && (
-                                    <span className="ml-2 text-red-600 font-semibold">⚠️ 초과</span>
+
+                                <div className="flex items-center gap-2">
+                                  {participants.length > 0 ? (
+                                    <div className="text-xs text-gray-700 text-right">
+                                      {participants.slice(0, 2).map(p => (
+                                        <span key={p.id} className="mr-2">{p.name}</span>
+                                      ))}
+                                      {participants.length > 2 && (
+                                        <span className="text-blue-600">+{participants.length - 2}</span>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <span className="text-xs text-gray-400">-</span>
                                   )}
+
+                                  <button
+                                    onClick={() => openRoomDetail(room)}
+                                    className="px-2 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition"
+                                  >
+                                    상세
+                                  </button>
                                 </div>
                               </div>
                             </div>
-
-                            <div className="flex items-center gap-3">
-                              {participants.length > 0 ? (
-                                <div className="text-xs text-gray-700 text-right">
-                                  {participants.slice(0, 2).map(p => (
-                                    <div key={p.id}>{p.name} ({p.totalPeople}명)</div>
-                                  ))}
-                                  {participants.length > 2 && (
-                                    <div className="text-blue-600 font-medium">
-                                      +{participants.length - 2}명 더 보기
-                                    </div>
-                                  )}
-                                </div>
-                              ) : (
-                                <span className="text-xs text-gray-400 italic">배정 없음</span>
-                              )}
-
-                              <button
-                                onClick={() => openRoomDetail(room)}
-                                className="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition whitespace-nowrap"
-                              >
-                                상세
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+
+          {/* 페이지네이션 */}
+          {totalPages > 1 && (
+            <div className="mt-6 flex items-center justify-center gap-2">
+              <button
+                onClick={() => setCurrentPage(1)}
+                disabled={currentPage === 1}
+                className="px-3 py-1 border rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+              >
+                처음
+              </button>
+              <button
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="px-3 py-1 border rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+              >
+                이전
+              </button>
+              <span className="px-4 py-1 text-sm font-medium">
+                {currentPage} / {totalPages}
+              </span>
+              <button
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="px-3 py-1 border rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+              >
+                다음
+              </button>
+              <button
+                onClick={() => setCurrentPage(totalPages)}
+                disabled={currentPage === totalPages}
+                className="px-3 py-1 border rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+              >
+                마지막
+              </button>
+            </div>
+          )}
+        </>
       )}
 
       {/* 방 상세 정보 모달 */}

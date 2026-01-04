@@ -35,7 +35,7 @@ export async function GET(req) {
 // POST: 방 여러 개 생성 (날짜별로 개별 생성)
 export async function POST(req) {
   const deny = requireAdmin(req); if (deny) return deny;
-  const { start, end, startDate, endDate, group, capacity } = await req.json();
+  const { start, end, startDate, endDate, group, capacity, remarks } = await req.json();
 
   const startNum = parseInt(start, 10);
   const endNum = parseInt(end, 10);
@@ -61,6 +61,7 @@ export async function POST(req) {
         name: `${roomNum}호 (${date})`,
         capacity: cap,
         group,
+        remarks: remarks || '', // 비고 필드 추가 (여자방/남자방/가족실/혼합 등)
         createdAt: new Date()
       });
     }
